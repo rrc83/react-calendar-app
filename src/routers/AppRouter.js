@@ -1,18 +1,40 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { LoginScreen } from '../components/auth/LoginScreen'
 import { CalendarScreen } from '../components/calendar/CalendarScreen'
-import {BrowserRouter,Routes,Route} from 'react-router-dom';
+import {BrowserRouter,Route,Routes} from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { startChecking } from '../actions/auth';
+import { PublicRoutes } from './PublicRoutes';
+import { PrivateRoutes } from './PrivateRoutes';
 
 export const AppRouter = () => {
-    return (
-        <BrowserRouter>
-            <Routes>
-                
-                <Route exact path='/login' element={ <LoginScreen /> } />
+    const dispatch = useDispatch();
+    const {checking} = useSelector(state => state.auth);
 
-                <Route path='/' element={ <CalendarScreen /> } />
+    useEffect(() => {
+      dispatch(startChecking());
+    }, [dispatch])
+    
+    if(checking){
+        return <div>Cargando...</div>
+    }else{
+        return (
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/login" element={
+                        <PublicRoutes>
+                            <LoginScreen />
+                        </PublicRoutes>} 
+                    />
 
-            </Routes>
-        </BrowserRouter>
-    )
+                    <Route path="/" element={
+                        <PrivateRoutes>
+                            <CalendarScreen/>
+                        </PrivateRoutes>}
+                    />                  
+
+                </Routes>
+            </BrowserRouter>
+        )
+    }
 }

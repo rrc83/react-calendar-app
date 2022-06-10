@@ -1,8 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Modal from 'react-modal';
 import DateTimePicker from 'react-datetime-picker';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import { useDispatch, useSelector } from 'react-redux';
+import { uiCloseModal } from '../../actions/ui';
+import { eventAddNew, eventClearActiveNote, eventUpdated } from '../../actions/events';
 
 const customStyles = {
     content: {
@@ -20,19 +23,31 @@ Modal.setAppElement('#root');
 
 const now = moment().minutes(0).seconds(0).add(1,"hours");
 const endX = moment(now.toDate()).add(1,"hours");
+const initEvent = {
+    title: 'Evento',
+    notes: '',
+    start:now.toDate(),
+    end:endX.toDate()
+};
 
 export const CalendarModal = () => {
-
+    const {modalOpen} = useSelector(state=>state.ui);
+    const {activeEvent:activeNote} = useSelector(state=>state.calendar);
     const [startDate,setStartDate] = useState(now.toDate());
     const [endDate,setEndtDate] = useState(endX.toDate());
     const [titleValid,setTitleValid] = useState(true);
+    const dispatch = useDispatch();
 
-    const [formValues,setFormValues] = useState({
-        title: 'Evento',
-        notes: '',
-        start:now.toDate(),
-        end:endX.toDate()
-    });
+    const [formValues,setFormValues] = useState(initEvent);
+
+    useEffect(() => {
+        if (activeNote){
+            setFormValues(activeNote);
+        }else{
+            setFormValues(initEvent);
+        }
+    }, [activeNote,setFormValues])
+    
 
     const handleInputChange = ({target})=>{
         setFormValues({...formValues,
@@ -43,21 +58,29 @@ export const CalendarModal = () => {
     const {notes,title,start,end} = formValues;
 
     const closeModal = () => {
-        
+        dispatch( uiCloseModal() );
+        setTimeout(() => {
+            dispatch( eventClearActiveNote() );
+        }, 200);
+        setFormValues( initEvent ); 
     };
 
     const handleStartDateChange = (e)=>{
         setStartDate(e);
-        setFormValues({...formValues,
-            start : e
-          });
+        setFormValues(
+            {...formValues,
+                start : e
+            }
+        );
     }
 
     const handleEndDateChange = (e)=>{
         setEndtDate(e);
-        setFormValues({...formValues,
-            end : e
-          });
+        setFormValues(
+                {...formValues,
+                    end : e
+                }
+        );
     }
 
     const handleSubmitForm = (e)=>{
@@ -76,20 +99,36 @@ export const CalendarModal = () => {
         }
 
         setTitleValid(true);
+        if(!activeNote){
+            dispatch(eventAddNew({
+                ...formValues,
+                id:new Date().getTime(),
+                user:{
+                    _id:'1234',
+                    name:'Ruben'
+                }
+            }));
+        }else{
+            dispatch(eventUpdated(formValues));
+        }
+
         closeModal();
     }
 
-
     return (
         <Modal
-            isOpen={true}
+            isOpen={modalOpen}
             onRequestClose={closeModal}
             style={customStyles}
             closeTimeoutMS={200}
             className="modal"
             overlayClassName="modal-fondo"
         >
-            <h1> Nuevo evento </h1>
+            {
+                !activeNote?<h1> Nuevo evento </h1>
+                           :<h1> Editar evento </h1>
+            }
+            
             <hr />
             <form className="container"
                   onSubmit={handleSubmitForm}
@@ -105,8 +144,7 @@ export const CalendarModal = () => {
                 <div className="form-group">
                     <label>Fecha y hora fin</label>
                     <DateTimePicker onChange={handleEndDateChange}
-                                    value={endDate}
-                                    minDate={endDate}
+                                    value={endDate}                                    
                                     className='form-control ' />
                 </div>
 
